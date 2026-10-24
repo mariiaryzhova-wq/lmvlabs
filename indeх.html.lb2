@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Вибір ноутбука — три варіанти інтерфейсу фільтрації</title>
+<style>
+:root{--ink:#1d2433;--mut:#667085;--pri:#4f46e5;--line:#e4e7ee;--ok:#15803d}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.4 system-ui,"Segoe UI",Roboto,sans-serif;background:#f4f6fb;color:var(--ink)}
+.w{max-width:960px;margin:0 auto;padding:0 14px}
+header{background:#fff;border-bottom:1px solid var(--line)}
+h1{font-size:1.15rem;margin:12px 0 4px}
+nav{display:flex;gap:4px}
+nav button{border:0;background:none;padding:9px 14px;font:inherit;font-weight:600;color:var(--mut);cursor:pointer;border-bottom:3px solid transparent}
+nav button[aria-selected=true]{color:var(--pri);border-color:var(--pri)}
+#ctx{margin:0;padding:8px 0 10px;color:var(--mut);font-size:.86rem}
+main{padding:16px 0 90px}
+.btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 13px;font:inherit;cursor:pointer}
+.btn:hover{border-color:var(--pri)}
+.pri{background:var(--pri);color:#fff;border-color:var(--pri)}
+button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px solid #a5b4fc;outline-offset:2px}
+.it{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.it div{flex:1;display:flex;flex-direction:column}
+.it span{color:var(--mut);font-size:.85rem}
+.cnt{color:var(--mut);margin:0 0 8px}
+/* A */
+.a{display:grid;grid-template-columns:210px 1fr;gap:16px}
+aside{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;align-self:start}
+fieldset{border:0;margin:0 0 10px;padding:0}
+legend{font-weight:700;margin-bottom:4px;padding:0}
+aside label{display:block;padding:5px 6px;border-radius:6px;cursor:pointer}
+aside label:hover{background:#eef2ff}
+select{width:100%;padding:8px;font:inherit;border-radius:8px}
+/* B */
+.b{max-width:700px;margin:0 auto}
+.prog{height:8px;background:var(--line);border-radius:9px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--pri)}
+.b h2{margin:6px 0 16px}
+.big{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.big .btn{height:80px;font-size:1.15rem;font-weight:600}
+.lnk{border:0;background:none;color:var(--pri);font:inherit;cursor:pointer;margin-top:14px;padding:6px 0}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.tags span{background:#eef2ff;color:var(--pri);border-radius:99px;padding:3px 10px;font-size:.85rem}
+/* C */
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.chip{display:flex;align-items:center;gap:7px;border:2px solid var(--line);background:#fff;border-radius:99px;padding:9px 16px;font:inherit;font-weight:600;cursor:pointer}
+.chip i{width:14px;height:14px;border-radius:50%}
+.chip[aria-pressed=true]{border-color:var(--pri);background:#eef2ff}
+.map{background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px}
+svg{width:100%;height:auto;display:block}
+.dot{cursor:pointer;transition:opacity .2s}
+.dot.dim{opacity:.12;pointer-events:none}
+.dot:hover circle.v,.dot:focus circle.v{stroke:#1d2433;stroke-width:3}
+.dot.sel circle.v{stroke:#15803d;stroke-width:4}
+#tip{min-height:22px;margin:8px 2px 0;color:var(--mut)}
+#sel{position:fixed;left:0;right:0;bottom:0;background:#dcfce7;color:#14532d;border-top:2px solid var(--ok);padding:12px 16px;text-align:center;font-weight:600}
+#sel:empty{display:none}
+@media(max-width:640px){.a{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div class="w">
+  <h1>💻 Вибір ноутбука: три варіанти інтерфейсу фільтрації</h1>
+  <nav role="tablist">
+    <button role="tab" data-v="a">A. Панель фільтрів</button>
+    <button role="tab" data-v="b">B. Покроковий помічник</button>
+    <button role="tab" data-v="c">C. Карта «ціна × ОЗП»</button>
+  </nav>
+  <p id="ctx"></p>
+</div></header>
+<main class="w"><div id="v"></div></main>
+<div id="sel" aria-live="polite"></div>
+
+<script>
+"use strict";
+const BR=["Lenovo","ASUS","Acer","HP","Dell"], RAMS=[8,16,32];
+const COL={Lenovo:"#e11d48",ASUS:"#2563eb",Acer:"#16a34a",HP:"#7c3aed",Dell:"#ea580c"};
+const BANDS=[["Будь-яка ціна",0,1e9],["До 20 000 ₴",0,2e4],["20 000 – 30 000 ₴",2e4,3e4],["Понад 30 000 ₴",3e4,1e9]];
+const D=[["Lenovo IdeaPad 3","Lenovo",8,18990],["Lenovo IdeaPad 5","Lenovo",16,27990],["Lenovo Legion 5","Lenovo",16,42990],
+["ASUS Vivobook 15","ASUS",8,19490],["ASUS TUF A15","ASUS",16,29990],["ASUS Zenbook 14","ASUS",16,31990],
+["Acer Aspire 5","Acer",8,17990],["Acer Swift 3","Acer",16,28490],["HP Pavilion 15","HP",16,26990],["HP 250 G9","HP",8,15490],
+["Dell Inspiron 15","Dell",32,33990],["Dell Vostro 3520","Dell",8,21490]].map(([n,b,r,p],i)=>({id:i,n,b,r,p}));
+const CTX={
+ a:"Контекст: настільний інтернет-магазин із великим каталогом; користувач знає кілька критеріїв і хоче комбінувати їх (наприклад, одразу кілька брендів).",
+ b:"Контекст: термінал у магазині або смартфон, нетехнічна чи нова аудиторія, мало критеріїв; потрібне мінімальне когнітивне навантаження.",
+ c:"Контекст: невеликий каталог (до ~50 позицій), консультант або покупець порівнює компроміс «ціна — характеристики» візуально."};
+const $=s=>document.querySelector(s), fm=n=>n.toLocaleString("uk-UA")+" ₴";
+let S, cur="a";
+const fresh=()=>{S={a:{b:new Set(),r:0,p:0},b:{s:0,b:new Set(),r:0,p:0},c:{b:new Set()},sel:null};$("#sel").textContent="";};
+const match=(d,f)=>(!f.b.size||f.b.has(d.b))&&(!f.r||d.r==f.r)&&d.p>BANDS[f.p||0][1]&&d.p<=BANDS[f.p||0][2];
+const card=d=>`<div class="it"><div><b>${d.n}</b><span>${d.r} ГБ ОЗП</span></div><strong>${fm(d.p)}</strong><button class="btn pri" data-pick="${d.id}">Обрати</button></div>`;
+function pick(id){
+  const d=D[id]; S.sel=id;
+  $("#sel").innerHTML=`✅ Обрано: ${d.n} — ${d.r} ГБ ОЗП, ${fm(d.p)}`;
+  if(cur==="c") C();
+}
+
+/* ---------- Варіант A: панель фільтрів зі стандартними елементами ---------- */
+function A(){
+  const f=S.a;
+  $("#v").innerHTML=`<div class="a"><aside>
+    <fieldset><legend>Бренд</legend>${BR.map(b=>`<label><input type="checkbox" data-b="${b}"${f.b.has(b)?" checked":""}> ${b}</label>`).join("")}</fieldset>
+    <fieldset><legend>Обсяг ОЗП</legend>${[0,...RAMS].map(r=>`<label><input type="radio" name="r" value="${r}"${f.r==r?" checked":""}> ${r?r+" ГБ":"Будь-який"}</label>`).join("")}</fieldset>
+    <fieldset><legend>Ціна</legend><select id="pr" aria-label="Ціна">${BANDS.map((b,i)=>`<option value="${i}"${f.p==i?" selected":""}>${b[0]}</option>`).join("")}</select></fieldset>
+    <button class="btn" id="ra">Скинути фільтри</button></aside>
+    <section><p class="cnt" id="cnt"></p><div id="lst"></div></section></div>`;
+  listA();
+}
+function listA(){
+  const r=D.filter(d=>match(d,S.a));
+  $("#cnt").textContent=`Знайдено: ${r.length} з ${D.length}`;
+  $("#lst").innerHTML=r.map(card).join("")||'<p class="cnt">Нічого не знайдено — послабте фільтри.</p>';
+}
+
+/* ---------- Варіант B: покроковий помічник (один запитання на екран) ---------- */
+function B(){
+  const w=S.b, st=[["Який бренд вас цікавить?",["Будь-який",...BR]],["Скільки оперативної пам’яті потрібно?",["Будь-яка",...RAMS.map(r=>r+" ГБ")]],["Який бюджет?",BANDS.map(x=>x[0])]];
+  if(w.s<3){
+    const [q,o]=st[w.s];
+    $("#v").innerHTML=`<div class="b"><div class="prog"><i style="width:${(w.s+1)/3*100}%"></i></div>
+      <p class="cnt">Крок ${w.s+1} з 3</p><h2>${q}</h2>
+      <div class="big">${o.map((t,i)=>`<button class="btn" data-s="${i}">${t}</button>`).join("")}</div>
+      ${w.s?'<button class="lnk" id="back">← Назад</button>':""}</div>`;
+  } else {
+    const r=D.filter(d=>match(d,w));
+    $("#v").innerHTML=`<div class="b"><h2>Підібрано: ${r.length}</h2>
+      <div class="tags"><span>${w.b.size?[...w.b][0]:"Будь-який бренд"}</span><span>${w.r?w.r+" ГБ":"Будь-яка ОЗП"}</span><span>${BANDS[w.p][0]}</span></div>
+      ${r.map(card).join("")||'<p class="cnt">Нічого не знайдено.</p>'}
+      <button class="lnk" id="back">← Назад</button> <button class="lnk" id="again">Почати спочатку</button></div>`;
+  }
+}
+
+/* ---------- Варіант C: карта «ціна × ОЗП» (пряма маніпуляція) ---------- */
+const X=p=>60+(p-10000)/35000*560, RY={8:265,16:165,32:65};
+const Y=d=>RY[d.r]+(BR.indexOf(d.b)-2)*18;
+function C(){
+  const f=S.c.b;
+  const grid=RAMS.map(r=>`<rect x="60" y="${RY[r]-50}" width="560" height="100" fill="${r==16?"#f8f9fe":"#fff"}" stroke="#e4e7ee"/><text x="52" y="${RY[r]+4}" text-anchor="end" font-size="13" fill="#667085">${r} ГБ</text>`).join("")
+   +[15e3,2e4,3e4,4e4].map(p=>`<line x1="${X(p)}" x2="${X(p)}" y1="15" y2="315" stroke="#e4e7ee" stroke-dasharray="4"/><text x="${X(p)}" y="330" text-anchor="middle" font-size="12" fill="#667085">${fm(p)}</text>`).join("");
+  const dots=D.map(d=>`<g class="dot${f.size&&!f.has(d.b)?" dim":""}${S.sel===d.id?" sel":""}" data-pick="${d.id}" tabindex="0" role="button" aria-label="${d.n}, ${d.r} ГБ, ${fm(d.p)}">
+    <circle cx="${X(d.p)}" cy="${Y(d)}" r="17" fill="transparent"/><circle class="v" cx="${X(d.p)}" cy="${Y(d)}" r="10" fill="${COL[d.b]}" stroke="#fff" stroke-width="2"/></g>`).join("");
+  $("#v").innerHTML=`<div class="chips" role="group" aria-label="Бренд">${BR.map(b=>`<button class="chip" data-cb="${b}" aria-pressed="${f.has(b)}"><i style="background:${COL[b]}"></i>${b}</button>`).join("")}</div>
+    <div class="map"><svg viewBox="0 0 640 340" role="img" aria-label="Карта ноутбуків: ціна по горизонталі, ОЗП по вертикалі">${grid}${dots}</svg></div>
+    <p id="tip">Наведіть курсор на точку, щоб побачити модель; натисніть, щоб обрати.</p>`;
+}
+
+/* ---------- Перемикання варіантів і події ---------- */
+function show(v){
+  cur=v; fresh();
+  document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===v));
+  $("#ctx").textContent=CTX[v]; ({a:A,b:B,c:C})[v]();
+}
+document.addEventListener("click",e=>{
+  const t=e.target, g=n=>t.closest(n);
+  if(g("nav button")) return show(g("nav button").dataset.v);
+  if(g("[data-pick]")) return pick(+g("[data-pick]").dataset.pick);
+  if(g("#ra")) return show("a");
+  if(g("[data-s]")){ const w=S.b,i=+g("[data-s]").dataset.s;
+    if(w.s==0) w.b=i?new Set([BR[i-1]]):new Set();
+    if(w.s==1) w.r=i?RAMS[i-1]:0;
+    if(w.s==2) w.p=i;
+    w.s++; return B(); }
+  if(g("#back")){ S.b.s=Math.max(0,S.b.s-(S.b.s>=3?1:1)); return B(); }
+  if(g("#again")) return show("b");
+  if(g("[data-cb]")){ const s=S.c.b,b=g("[data-cb]").dataset.cb; s.has(b)?s.delete(b):s.add(b); return C(); }
+});
+document.addEventListener("change",e=>{
+  const t=e.target, f=S.a;
+  if(t.dataset.b){ t.checked?f.b.add(t.dataset.b):f.b.delete(t.dataset.b); }
+  else if(t.name==="r") f.r=+t.value;
+  else if(t.id==="pr") f.p=+t.value;
+  else return;
+  listA();
+});
+document.addEventListener("mouseover",e=>{
+  const g=e.target.closest(".dot"); if(!g||!$("#tip")) return;
+  const d=D[+g.dataset.pick]; $("#tip").textContent=`${d.n} · ${d.r} ГБ ОЗП · ${fm(d.p)}`;
+});
+document.addEventListener("keydown",e=>{
+  if(e.key==="Enter"&&e.target.classList.contains("dot")) pick(+e.target.dataset.pick);
+});
+show("a");
+</script>
+</body>
+</html>
