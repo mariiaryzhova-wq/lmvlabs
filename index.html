@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Улюблені об’єкти — відстеження стану</title>
+<style>
+:root{--bg:#f4f6fb;--card:#fff;--ink:#1d2433;--mut:#667085;--pri:#4f46e5;--ok:#15803d;--okbg:#dcfce7;--bad:#b91c1c;--badbg:#fee2e2;--line:#e4e7ee}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.4}
+.wrap{max-width:1000px;margin:0 auto;padding:0 16px}
+header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0 0;flex-wrap:wrap}
+h1{font-size:1.25rem;margin:0}
+.tabs{display:flex;gap:4px;margin-top:10px}
+.tab{border:0;background:none;padding:10px 16px;font:inherit;font-weight:600;color:var(--mut);cursor:pointer;border-bottom:3px solid transparent}
+.tab[aria-selected=true]{color:var(--pri);border-color:var(--pri)}
+.tab.drop{background:#eef2ff;outline:2px dashed var(--pri);outline-offset:-4px}
+.badge{display:inline-block;min-width:22px;padding:1px 7px;border-radius:99px;background:var(--pri);color:#fff;font-size:.78rem;margin-left:6px;text-align:center}
+.badge.new{background:var(--bad)}
+main{padding:20px 0 60px}
+.hint{color:var(--mut);margin:0 0 16px}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer}
+.btn:hover{border-color:var(--pri)}
+.btn.pri{background:var(--pri);color:#fff;border-color:var(--pri)}
+.btn:focus-visible,.tab:focus-visible,.heart:focus-visible{outline:3px solid #a5b4fc;outline-offset:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+.card{position:relative;background:var(--card);border:2px solid var(--line);border-radius:14px;padding:14px;display:flex;gap:12px;cursor:grab;transition:border-color .2s,box-shadow .2s}
+.card:hover{box-shadow:0 4px 14px rgba(30,40,80,.08)}
+.card.ok{border-color:var(--ok);background:#f6fef9}
+.card.bad{border-color:var(--bad);background:#fff8f8}
+.card.unseen{animation:pulse 1.6s ease-in-out 3}
+@keyframes pulse{50%{box-shadow:0 0 0 6px rgba(79,70,229,.18)}}
+.ico{font-size:2.4rem;width:60px;height:60px;border-radius:12px;background:#eef2ff;display:flex;align-items:center;justify-content:center;flex:none}
+.info{flex:1;min-width:0}
+.info h3{margin:0 0 2px;font-size:1rem}
+.cat{margin:0;color:var(--mut);font-size:.85rem}
+.price{font-weight:700;font-size:1.1rem;margin:6px 0}
+.st{display:inline-block;font-size:.8rem;padding:2px 8px;border-radius:99px}
+.st.ok{background:var(--okbg);color:var(--ok)}.st.bad{background:var(--badbg);color:var(--bad)}
+.heart{position:absolute;top:8px;right:8px;border:0;background:none;font-size:1.6rem;cursor:pointer;color:#98a2b3;line-height:1}
+.heart[aria-pressed=true]{color:#e11d48}
+.heart:hover{transform:scale(1.15)}
+.chg{margin:8px 0 0;padding:6px 8px;border-radius:8px;font-size:.88rem;font-weight:600}
+.chg.ok{background:var(--okbg);color:var(--ok)}.chg.bad{background:var(--badbg);color:var(--bad)}
+.new-tag{position:absolute;top:-10px;left:12px;background:var(--bad);color:#fff;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:99px}
+.since{font-size:.8rem;color:var(--mut);margin:4px 0 0}
+.acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.acts .btn{padding:5px 10px;font-size:.85rem}
+.empty{text-align:center;color:var(--mut);padding:50px 10px;border:2px dashed var(--line);border-radius:14px;background:#fff}
+.empty b{display:block;font-size:1.1rem;color:var(--ink);margin-bottom:6px}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:10;width:min(92vw,420px)}
+.t{background:#1d2433;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:.92rem}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="top">
+      <h1>🛍️ ТехноСклад <span style="font-weight:400;color:var(--mut)">· відстеження стану</span></h1>
+      <span class="hint" style="margin:0;font-size:.85rem">Серце ♥ додає об’єкт до «Улюблених»</span>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tab-cat" aria-selected="true" aria-controls="p-cat">Каталог</button>
+      <button class="tab" role="tab" id="tab-fav" aria-selected="false" aria-controls="p-fav">Мої улюблені<span class="badge" id="cnt">0</span><span class="badge new" id="newcnt" hidden>0</span></button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="p-cat" role="tabpanel" aria-labelledby="tab-cat">
+    <p class="hint">Натисніть на ♥ біля об’єкта або перетягніть картку на вкладку «Мої улюблені».</p>
+    <div class="grid" id="catalog"></div>
+  </section>
+
+  <section id="p-fav" role="tabpanel" aria-labelledby="tab-fav" hidden>
+    <div class="bar">
+      <button class="btn pri" id="sim">⚡ Симулювати зміну стану</button>
+      <label><input type="checkbox" id="auto"> Автосимуляція (кожні 6 с)</label>
+      <button class="btn" id="seenAll">Позначити все переглянутим</button>
+      <button class="btn" id="reset" style="margin-left:auto">Скинути демо-дані</button>
+    </div>
+    <div class="grid" id="favs"></div>
+  </section>
+</main>
+<div id="toast" aria-live="polite"></div>
+
+<script>
+"use strict";
+const KEY = "fav-tracker-v1";
+const SEED = [
+  {id:1, name:"Смартфон Nova X",     cat:"Смартфони",  emoji:"📱", price:12990, stock:true},
+  {id:2, name:"Навушники AirBeat",   cat:"Аудіо",      emoji:"🎧", price:2490,  stock:true},
+  {id:3, name:"Ноутбук Zenbook 14",  cat:"Ноутбуки",   emoji:"💻", price:31990, stock:false},
+  {id:4, name:"Розумний годинник Pulse", cat:"Гаджети", emoji:"⌚", price:4590,  stock:true},
+  {id:5, name:"Електронна книга Page", cat:"Читалки",  emoji:"📖", price:5290,  stock:true}
+];
+let S = load(), timer = null;
+
+function load(){
+  try { const r = JSON.parse(localStorage.getItem(KEY)); if (r && r.items && r.favs) return r; } catch(e){}
+  return {items: SEED.map(o => ({...o})), favs: {}};
+}
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} }
+const $ = s => document.querySelector(s);
+const fm = n => n.toLocaleString("uk-UA");
+const item = id => S.items.find(o => o.id === id);
+
+/* ---- Обчислення змін стану відносно моменту додавання ---- */
+function changes(f, o){
+  const L = [];
+  if (o.price !== f.price0){
+    const d = o.price - f.price0, p = Math.round(Math.abs(d) / f.price0 * 100);
+    L.push(d < 0
+      ? {c:"ok",  t:`📉 Ціна знизилась з ${fm(f.price0)} до ${fm(o.price)} грн (−${p}%)`}
+      : {c:"bad", t:`📈 Ціна зросла з ${fm(f.price0)} до ${fm(o.price)} грн (+${p}%)`});
+  }
+  if (o.stock !== f.stock0)
+    L.push(o.stock ? {c:"ok", t:"✅ З’явився в наявності!"} : {c:"bad", t:"⚠️ Закінчився в наявності"});
+  return L;
+}
+
+/* ---- Відображення ---- */
+function stateBadge(o){ return `<span class="st ${o.stock ? "ok" : "bad"}">${o.stock ? "В наявності" : "Немає в наявності"}</span>`; }
+function heart(o){
+  const on = !!S.favs[o.id];
+  return `<button class="heart" data-heart="${o.id}" aria-pressed="${on}" aria-label="${on ? "Прибрати з улюблених" : "Додати в улюблені"}: ${o.name}" title="${on ? "Прибрати з улюблених" : "Додати в улюблені"}">${on ? "♥" : "♡"}</button>`;
+}
+function render(){
+  $("#catalog").innerHTML = S.items.map(o => `
+    <article class="card" draggable="true" data-id="${o.id}">
+      <div class="ico">${o.emoji}</div>
+      <div class="info"><h3>${o.name}</h3><p class="cat">${o.cat}</p>
+        <p class="price">${fm(o.price)} грн</p>${stateBadge(o)}</div>
+      ${heart(o)}
+    </article>`).join("");
+
+  const ids = Object.keys(S.favs).map(Number);
+  $("#favs").innerHTML = ids.length ? ids.map(id => {
+    const o = item(id), f = S.favs[id], L = changes(f, o);
+    const cls = L.length ? (L.some(x => x.c === "bad") && !L.some(x => x.c === "ok") ? "bad" : "ok") : "";
+    return `
+    <article class="card ${cls} ${f.unseen && L.length ? "unseen" : ""}" draggable="true" data-id="${o.id}">
+      ${f.unseen && L.length ? '<span class="new-tag">Нове</span>' : ""}
+      <div class="ico">${o.emoji}</div>
+      <div class="info"><h3>${o.name}</h3><p class="cat">${o.cat}</p>
+        <p class="price">${fm(o.price)} грн</p>${stateBadge(o)}
+        <p class="since">Під час додавання: ${fm(f.price0)} грн, ${f.stock0 ? "в наявності" : "немає в наявності"}</p>
+        ${L.map(x => `<p class="chg ${x.c}">${x.t}</p>`).join("")}
+        <div class="acts">
+          ${L.length ? `<button class="btn" data-seen="${o.id}">Переглянуто</button>` : ""}
+          <button class="btn" data-heart="${o.id}">Видалити</button>
+        </div>
+      </div>
+      ${heart(o)}
+    </article>`;
+  }).join("") : `<div class="empty" style="grid-column:1/-1"><b>У вас ще немає улюблених об’єктів</b>Перейдіть до каталогу та натисніть ♥ біля потрібного об’єкта.</div>`;
+
+  $("#cnt").textContent = ids.length;
+  const nw = ids.filter(id => S.favs[id].unseen && changes(S.favs[id], item(id)).length).length;
+  $("#newcnt").hidden = !nw; $("#newcnt").textContent = nw + " нових";
+}
+
+/* ---- Дії ---- */
+function toast(msg){
+  const d = document.createElement("div"); d.className = "t"; d.textContent = msg;
+  $("#toast").appendChild(d); setTimeout(() => d.remove(), 3800);
+}
+function addFav(id){
+  const o = item(id); if (!o || S.favs[id]) return;
+  S.favs[id] = {price0:o.price, stock0:o.stock, unseen:false};
+  save(); render(); toast(`♥ «${o.name}» додано до улюблених`);
+}
+function removeFav(id){
+  const o = item(id); delete S.favs[id];
+  save(); render(); toast(`«${o.name}» прибрано з улюблених`);
+}
+function simulate(){
+  const favIds = Object.keys(S.favs).map(Number);
+  const pool = favIds.length ? favIds : S.items.map(o => o.id);
+  const o = item(pool[Math.floor(Math.random() * pool.length)]);
+  let msg;
+  if (Math.random() < 0.6){
+    const down = Math.random() < 0.65, k = down ? 0.75 + Math.random() * 0.2 : 1.05 + Math.random() * 0.15;
+    o.price = Math.max(500, Math.round(o.price * k / 10) * 10);
+    msg = `${o.name}: ціна тепер ${fm(o.price)} грн`;
+  } else {
+    o.stock = !o.stock;
+    msg = `${o.name}: ${o.stock ? "знову в наявності" : "закінчився на складі"}`;
+  }
+  if (S.favs[o.id]) S.favs[o.id].unseen = true;
+  save(); render(); toast(S.favs[o.id] ? "🔔 " + msg : "ℹ️ " + msg + " (не в улюблених)");
+}
+function markSeen(id){
+  const o = item(id), f = S.favs[id];
+  f.price0 = o.price; f.stock0 = o.stock; f.unseen = false; save(); render();
+}
+function show(tab){
+  const fav = tab === "fav";
+  $("#p-cat").hidden = fav; $("#p-fav").hidden = !fav;
+  $("#tab-cat").setAttribute("aria-selected", !fav); $("#tab-fav").setAttribute("aria-selected", fav);
+}
+
+/* ---- Події ---- */
+document.addEventListener("click", e => {
+  const h = e.target.closest("[data-heart]");
+  if (h){ const id = +h.dataset.heart; S.favs[id] ? removeFav(id) : addFav(id); return; }
+  const s = e.target.closest("[data-seen]"); if (s) markSeen(+s.dataset.seen);
+});
+$("#tab-cat").onclick = () => show("cat");
+$("#tab-fav").onclick = () => show("fav");
+$("#sim").onclick = simulate;
+$("#seenAll").onclick = () => { Object.keys(S.favs).forEach(id => markSeen(+id)); };
+$("#reset").onclick = () => { S = {items: SEED.map(o => ({...o})), favs: {}}; save(); render(); toast("Демо-дані скинуто"); };
+$("#auto").onchange = e => {
+  clearInterval(timer);
+  if (e.target.checked) timer = setInterval(simulate, 6000);
+};
+
+/* Drag-and-drop: перетягнути картку на вкладку «Мої улюблені» (пряма маніпуляція, стиль OOI) */
+document.addEventListener("dragstart", e => {
+  const c = e.target.closest(".card"); if (c) e.dataTransfer.setData("text/plain", c.dataset.id);
+});
+const fz = $("#tab-fav");
+fz.addEventListener("dragover", e => { e.preventDefault(); fz.classList.add("drop"); });
+fz.addEventListener("dragleave", () => fz.classList.remove("drop"));
+fz.addEventListener("drop", e => {
+  e.preventDefault(); fz.classList.remove("drop");
+  const id = +e.dataTransfer.getData("text/plain"); if (id) addFav(id);
+});
+
+render();
+</script>
+</body>
+</html>
